@@ -8,7 +8,7 @@ WORKDIR $PILOT_DIR
 COPY . $PILOT_DIR
 RUN go install 
 
-FROM alpine:3.12
+FROM alpine:3.6
 
 ENV FILEBEAT_VERSION=6.1.1-3
 COPY assets/glibc/glibc-2.26-r0.apk /tmp/

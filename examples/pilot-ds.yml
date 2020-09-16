@@ -20,7 +20,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: log-pilot
-        image: registry.cn-hangzhou.aliyuncs.com/acs/log-pilot:0.9.5-filebeat
+        image: codingcorp-docker.pkg.coding.net/coding-private/release/log-pilot:0.1
         envFrom:
           - configMapRef:
               name: pilot-cm
