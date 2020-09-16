@@ -32,7 +32,7 @@ def cleanup():
 
 def run():
     tpl_config = '/pilot/filebeat.tpl'
-    os.execve('/pilot/pilot', ['/pilot/pilot', '-template', tpl_config, '-base', base, '-log-level', 'debug'],
+    os.execve('/pilot/pilot', ['/pilot/pilot', '-template', tpl_config, '-base', base],
               os.environ)
 
 

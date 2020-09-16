@@ -4,4 +4,4 @@ metadata:
   name: pilot-cm
 data:
   LOGGING_OUTPUT: "elasticsearch"
-  ELASTIC_HOSTS: ""
+  ELASTICSEARCH_HOSTS: "9.134.12.153:9200"
