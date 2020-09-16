@@ -102,7 +102,7 @@ func New(tplStr string, baseDir string) (*Pilot, error) {
 		reloadChan:    make(chan bool),
 		stopChan:      make(chan bool),
 		piloter:       piloter,
-		logPrefix:     []string{DefaultLogPrefix},
+		logPrefix:     []string{"coding"},
 		createSymlink: createSymlink,
 	}, nil
 }
@@ -425,20 +425,6 @@ func (p *Pilot) delContainer(id string) error {
 		log.Error(err)
 	}
 
-	//fixme refactor in the future
-	//if p.piloter.Name() == PILOT_FLUENTD {
-	//	clean := func() {
-	//		log.Infof("Try removing log config %s", id)
-	//		if err := os.Remove(p.piloter.GetConfPath(id)); err != nil {
-	//			log.Warnf("removing %s log config failure", id)
-	//			return
-	//		}
-	//		p.tryReload()
-	//	}
-	//	time.AfterFunc(15*time.Minute, clean)
-	//	return nil
-	//}
-
 	return p.piloter.OnDestroyEvent(id)
 }
 
@@ -518,35 +504,9 @@ func (p *Pilot) parseTags(tags string) (map[string]string, error) {
 	return tagMap, nil
 }
 
-//func (p *Pilot) tryCheckKafkaTopic(topic string) error {
-//	output := os.Getenv(ENV_LOGGING_OUTPUT)
-//	if output != "kafka" {
-//		return nil
-//	}
-//
-//	topicPath := filepath.Join(p.piloter.GetBaseConf(), "config", "kafka_topics")
-//	if _, err := os.Stat(topicPath); os.IsNotExist(err) {
-//		log.Info("ignore checking the validity of kafka topic")
-//		return nil
-//	}
-//
-//	topics, err := ReadFile(topicPath, ",")
-//	if err != nil {
-//		return err
-//	}
-//
-//	for _, t := range topics {
-//		if t == topic {
-//			return nil
-//		}
-//	}
-//
-//	return fmt.Errorf("invalid topic: %s, supported topics: %v", topic, topics)
-//}
-
 func (p *Pilot) parseLogConfig(name string, info *LogInfoNode, jsonLogPath string, mounts map[string]types.MountPoint) (*LogConfig, error) {
-	path := strings.TrimSpace(info.value)
-	if path == "" {
+	pth := strings.TrimSpace(info.value)
+	if pth == "" {
 		return nil, fmt.Errorf("path for %s is empty", name)
 	}
 
@@ -595,11 +555,9 @@ func (p *Pilot) parseLogConfig(name string, info *LogInfoNode, jsonLogPath strin
 		delete(formatConfig, "pattern")
 	}
 
-	if path == "stdout" {
+	if pth == "stdout" {
 		logFile := filepath.Base(jsonLogPath)
-		if p.piloter.Name() == PILOT_FILEBEAT {
-			logFile = logFile + "*"
-		}
+		logFile = logFile + "*"
 
 		return &LogConfig{
 			Name:         name,
@@ -614,19 +572,19 @@ func (p *Pilot) parseLogConfig(name string, info *LogInfoNode, jsonLogPath strin
 		}, nil
 	}
 
-	if !filepath.IsAbs(path) {
-		return nil, fmt.Errorf("%s must be absolute path, for %s", path, name)
+	if !filepath.IsAbs(pth) {
+		return nil, fmt.Errorf("%s must be absolute path, for %s", pth, name)
 	}
 
-	containerDir := filepath.Dir(path)
-	file := filepath.Base(path)
+	containerDir := filepath.Dir(pth)
+	file := filepath.Base(pth)
 	if file == "" {
-		return nil, fmt.Errorf("%s must be a file path, not directory, for %s", path, name)
+		return nil, fmt.Errorf("%s must be a file path, not directory, for %s", pth, name)
 	}
 
 	hostDir := p.hostDirOf(containerDir, mounts)
 	if hostDir == "" {
-		return nil, fmt.Errorf("in log %s: %s is not mount on host", name, path)
+		return nil, fmt.Errorf("in log %s: %s is not mount on host", name, pth)
 	}
 
 	cfg := &LogConfig{

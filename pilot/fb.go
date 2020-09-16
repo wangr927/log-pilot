@@ -17,15 +17,13 @@ import (
 
 // Global variables for FilebeatPiloter
 const (
-	FILEBEAT_EXEC_CMD  = "/usr/bin/filebeat"
-	FILEBEAT_REGISTRY  = "/var/lib/filebeat/registry"
-	FILEBEAT_BASE_CONF = "/etc/filebeat"
-	FILEBEAT_CONF_DIR  = FILEBEAT_BASE_CONF + "/prospectors.d"
-	FILEBEAT_CONF_FILE = FILEBEAT_BASE_CONF + "/filebeat.yml"
-
+	FILEBEAT_EXEC_CMD   = "/usr/bin/filebeat"
+	FILEBEAT_REGISTRY   = "/var/lib/filebeat/registry"
+	FILEBEAT_BASE_CONF  = "/etc/filebeat"
+	FILEBEAT_CONF_DIR   = FILEBEAT_BASE_CONF + "/prospectors.d"
+	FILEBEAT_CONF_FILE  = FILEBEAT_BASE_CONF + "/filebeat.yml"
 	DOCKER_SYSTEM_PATH  = "/var/lib/docker/"
 	KUBELET_SYSTEM_PATH = "/var/lib/kubelet/"
-
 	ENV_FILEBEAT_OUTPUT = "FILEBEAT_OUTPUT"
 )
 
@@ -97,8 +95,10 @@ func (p *FilebeatPiloter) watch() error {
 }
 
 func (p *FilebeatPiloter) scan() error {
+	log.Debug("start a new scan")
 	states, err := p.getRegsitryState()
 	if err != nil {
+		log.Errorf("get registry state failed for %s", err)
 		return nil
 	}
 
