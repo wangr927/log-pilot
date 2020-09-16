@@ -7,7 +7,7 @@ RUN set -ex && apk add --no-cache make git
 WORKDIR $PILOT_DIR
 COPY . $PILOT_DIR
 RUN go install 
-
+# 注意这里需要使用alpine 3.6，过高版本的镜像中python有不兼容的情况
 FROM alpine:3.6
 
 ENV FILEBEAT_VERSION=6.1.1-3

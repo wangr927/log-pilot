@@ -5,3 +5,4 @@ metadata:
 data:
   LOGGING_OUTPUT: "elasticsearch"
   ELASTICSEARCH_HOSTS: "9.134.12.153:9200"
+  DEBUG: "true"

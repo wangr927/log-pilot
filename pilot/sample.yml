@@ -1,0 +1,35 @@
+- type: log
+  enabled: true
+  paths:
+    - /host/data/docker/containers/ec51cdd4b8c6668f6da6f5d23b2ec97ac314da93c6acea2af99ffef769a89f2d/ec51cdd4b8c6668f6da6f5d23b2ec97ac314da93c6acea2af99ffef769a89f2d-json.log*
+  scan_frequency: 10s
+  fields_under_root: true
+
+  docker-json: true
+
+
+  fields:
+
+
+    index: tengine
+
+    topic: tengine
+
+
+    docker_container: k8s_tengine_tengine-64c9f49fbb-9lp72_coding_e213dcc9-5554-4a3b-b4af-1c989b986a32_0
+
+    k8s_container_name: tengine
+
+    k8s_node_name: node1
+
+    k8s_pod: tengine-64c9f49fbb-9lp72
+
+    k8s_pod_namespace: coding
+
+
+  tail_files: false
+  close_inactive: 2h
+  close_eof: false
+  close_removed: true
+  clean_removed: true
+  close_renamed: false

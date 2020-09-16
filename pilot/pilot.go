@@ -60,7 +60,7 @@ type Pilot struct {
 	reloadChan    chan bool
 	stopChan      chan bool
 	baseDir       string
-	logPrefix     []string
+	logPrefix     string
 	createSymlink bool
 }
 
@@ -102,7 +102,7 @@ func New(tplStr string, baseDir string) (*Pilot, error) {
 		reloadChan:    make(chan bool),
 		stopChan:      make(chan bool),
 		piloter:       piloter,
-		logPrefix:     []string{"coding"},
+		logPrefix:     "coding",
 		createSymlink: createSymlink,
 	}, nil
 }
@@ -350,24 +350,19 @@ func (p *Pilot) newContainer(containerJSON *types.ContainerJSON) error {
 	container := container(containerJSON)
 
 	for _, e := range env {
-		for _, prefix := range p.logPrefix {
-			customConfig := fmt.Sprintf(ENV_SERVICE_LOGS_CUSTOME_CONFIG_TEMPL, prefix)
-			if strings.HasPrefix(e, customConfig) {
-				labels[customConfig] = e[len(customConfig)+1:]
-				log.Infof("Get customConfig key = %s, value = %s", customConfig, labels[customConfig])
-				continue
-			}
-
-			serviceLogs := fmt.Sprintf(ENV_SERVICE_LOGS_TEMPL, prefix)
-			if !strings.HasPrefix(e, serviceLogs) {
-				continue
-			}
-
-			envLabel := strings.SplitN(e, "=", 2)
-			if len(envLabel) == 2 {
-				labelKey := strings.Replace(envLabel[0], "_", ".", -1)
-				labels[labelKey] = envLabel[1]
-			}
+		customConfig := fmt.Sprintf(ENV_SERVICE_LOGS_CUSTOME_CONFIG_TEMPL, p.logPrefix)
+		if strings.HasPrefix(e, customConfig) {
+			labels[customConfig] = e[len(customConfig)+1:]
+			log.Infof("Get customConfig key = %s, value = %s", customConfig, labels[customConfig])
+			continue
+		}
+		if !strings.HasPrefix(e, fmt.Sprintf(ENV_SERVICE_LOGS_TEMPL, p.logPrefix)) {
+			continue
+		}
+		envLabel := strings.SplitN(e, "=", 2)
+		if len(envLabel) == 2 {
+			labelKey := strings.Replace(envLabel[0], "_", ".", -1)
+			labels[labelKey] = envLabel[1]
 		}
 	}
 
@@ -377,7 +372,6 @@ func (p *Pilot) newContainer(containerJSON *types.ContainerJSON) error {
 	}
 
 	if len(logConfigs) == 0 {
-		log.Debugf("%s has not log config, skip", id)
 		return nil
 	}
 
@@ -393,7 +387,7 @@ func (p *Pilot) newContainer(containerJSON *types.ContainerJSON) error {
 		return err
 	}
 	//TODO validate config before save
-	//log.Debugf("container %s log config: %s", id, logConfig)
+	log.Debugf("container %s log config: %s", id, logConfig)
 	if err = ioutil.WriteFile(p.piloter.GetConfPath(id), []byte(logConfig), os.FileMode(0644)); err != nil {
 		return err
 	}
@@ -662,29 +656,27 @@ func (p *Pilot) getLogConfigs(jsonLogPath string, mounts []types.MountPoint, lab
 	sort.Strings(labelNames)
 	root := newLogInfoNode("")
 	for _, k := range labelNames {
-		for _, prefix := range p.logPrefix {
-			customConfig := fmt.Sprintf(ENV_SERVICE_LOGS_CUSTOME_CONFIG_TEMPL, prefix)
-			if customConfig == k {
-				configs := strings.Split(labels[k], "\n")
-				for _, c := range configs {
-					if c == "" {
-						continue
-					}
-					customLabel := strings.SplitN(c, "=", 2)
-					customConfigs[customLabel[0]] = customLabel[1]
+		customConfig := fmt.Sprintf(ENV_SERVICE_LOGS_CUSTOME_CONFIG_TEMPL, p.logPrefix)
+		if customConfig == k {
+			configs := strings.Split(labels[k], "\n")
+			for _, c := range configs {
+				if c == "" {
+					continue
 				}
-				continue
+				customLabel := strings.SplitN(c, "=", 2)
+				customConfigs[customLabel[0]] = customLabel[1]
 			}
+			continue
+		}
 
-			serviceLogs := fmt.Sprintf(LABEL_SERVICE_LOGS_TEMPL, prefix)
-			if !strings.HasPrefix(k, serviceLogs) || strings.Count(k, ".") == 1 {
-				continue
-			}
+		serviceLogs := fmt.Sprintf(LABEL_SERVICE_LOGS_TEMPL, p.logPrefix)
+		if !strings.HasPrefix(k, serviceLogs) || strings.Count(k, ".") == 1 {
+			continue
+		}
 
-			logLabel := strings.TrimPrefix(k, serviceLogs)
-			if err := root.insert(strings.Split(logLabel, "."), labels[k]); err != nil {
-				return nil, err
-			}
+		logLabel := strings.TrimPrefix(k, serviceLogs)
+		if err := root.insert(strings.Split(logLabel, "."), labels[k]); err != nil {
+			return nil, err
 		}
 	}
 
@@ -711,20 +703,12 @@ func (p *Pilot) render(containerId string, container map[string]string, configLi
 		log.Infof("logs: %s = %v", containerId, config)
 	}
 
-	var output string
-	if p.piloter.Name() == PILOT_FILEBEAT {
-		output = os.Getenv(ENV_FILEBEAT_OUTPUT)
-	}
-	if output == "" {
-		output = os.Getenv(ENV_LOGGING_OUTPUT)
-	}
-
 	var buf bytes.Buffer
 	ctx := map[string]interface{}{
 		"containerId": containerId,
 		"configList":  configList,
 		"container":   container,
-		"output":      output,
+		"output":      "elasticsearch",
 	}
 	if err := p.templ.Execute(&buf, ctx); err != nil {
 		return "", err

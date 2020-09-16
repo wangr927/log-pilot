@@ -20,7 +20,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: log-pilot
-        image: codingcorp-docker.pkg.coding.net/coding-private/release/log-pilot:0.1
+        image: codingcorp-docker.pkg.coding.net/coding-private/release/log-pilot:0.4
         envFrom:
           - configMapRef:
               name: pilot-cm
@@ -36,7 +36,7 @@ spec:
           mountPath: /var/log/filebeat
         - name: state
           mountPath: /var/lib/filebeat
-        - name: root
+        - name: root  # 该挂载将系统docker engine记录container的信息的目录挂载进 pilot容器中
           mountPath: /host
           readOnly: true
         - name: localtime

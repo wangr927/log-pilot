@@ -41,7 +41,7 @@ setup.template.pattern: "${FILEBEAT_INDEX:-filebeat}-*"
 filebeat.config:
     prospectors:
         enabled: true
-        path: \${path.config}/prospectors.d/*.yml
+        path: /etc/filebeat/prospectors.d/*.yml
         reload.enabled: true
         reload.period: 10s
 EOF

@@ -24,7 +24,6 @@ const (
 	FILEBEAT_CONF_FILE  = FILEBEAT_BASE_CONF + "/filebeat.yml"
 	DOCKER_SYSTEM_PATH  = "/var/lib/docker/"
 	KUBELET_SYSTEM_PATH = "/var/lib/kubelet/"
-	ENV_FILEBEAT_OUTPUT = "FILEBEAT_OUTPUT"
 )
 
 var filebeat *exec.Cmd
