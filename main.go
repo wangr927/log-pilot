@@ -2,18 +2,16 @@ package main
 
 import (
 	"flag"
-	"github.com/AliyunContainerService/log-pilot/pilot"
 	log "github.com/Sirupsen/logrus"
+	"github.com/wangr927/log-pilot/pilot"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 )
 
 func main() {
-
-	template := flag.String("template", "", "Template filepath for fluentd or filebeat.")
+	template := flag.String("template", "", "Template filepath for filebeat.")
 	base := flag.String("base", "", "Directory which mount host root.")
-	level := flag.String("log-level", "INFO", "Log level")
 	flag.Parse()
 
 	baseDir, err := filepath.Abs(*base)
@@ -30,11 +28,10 @@ func main() {
 	}
 
 	log.SetOutput(os.Stdout)
-	logLevel, err := log.ParseLevel(*level)
-	if err != nil {
-		panic(err)
+	log.SetLevel(log.InfoLevel)
+	if os.Getenv("DEBUG") != "" {
+		log.SetLevel(log.DebugLevel)
 	}
-	log.SetLevel(logLevel)
 
 	b, err := ioutil.ReadFile(*template)
 	if err != nil {

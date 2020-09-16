@@ -22,9 +22,9 @@ func Convert(info *LogInfoNode) (map[string]string, error) {
 }
 
 // SimpleConverter simple format converter
-type SimpleConverter struct {
-	properties map[string]bool
-}
+//type SimpleConverter struct {
+//	properties map[string]bool
+//}
 
 func init() {
 

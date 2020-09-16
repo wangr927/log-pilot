@@ -89,15 +89,9 @@ func New(tplStr string, baseDir string) (*Pilot, error) {
 		return nil, err
 	}
 
-	piloter, err := NewPiloter(baseDir)
+	piloter, err := NewFilebeatPiloter(baseDir)
 	if err != nil {
 		return nil, err
-	}
-
-	logPrefix := []string{"aliyun"}
-	if os.Getenv(ENV_PILOT_LOG_PREFIX) != "" {
-		envLogPrefix := os.Getenv(ENV_PILOT_LOG_PREFIX)
-		logPrefix = strings.Split(envLogPrefix, ",")
 	}
 
 	createSymlink := os.Getenv(ENV_PILOT_CREATE_SYMLINK) == "true"
@@ -108,7 +102,7 @@ func New(tplStr string, baseDir string) (*Pilot, error) {
 		reloadChan:    make(chan bool),
 		stopChan:      make(chan bool),
 		piloter:       piloter,
-		logPrefix:     logPrefix,
+		logPrefix:     []string{DefaultLogPrefix},
 		createSymlink: createSymlink,
 	}, nil
 }
@@ -388,7 +382,9 @@ func (p *Pilot) newContainer(containerJSON *types.ContainerJSON) error {
 	}
 
 	// create symlink
-	p.createVolumeSymlink(containerJSON)
+	if err := p.createVolumeSymlink(containerJSON); err != nil {
+		log.Error(err)
+	}
 
 	//pilot.findMounts(logConfigs, jsonLogPath, mounts)
 	//生成配置
@@ -418,26 +414,30 @@ func (p *Pilot) doReload() {
 	log.Info("Reload goroutine is ready")
 	for {
 		<-p.reloadChan
-		p.reload()
+		if err := p.reload(); err != nil {
+			log.Error(err)
+		}
 	}
 }
 
 func (p *Pilot) delContainer(id string) error {
-	p.removeVolumeSymlink(id)
+	if err := p.removeVolumeSymlink(id); err != nil {
+		log.Error(err)
+	}
 
 	//fixme refactor in the future
-	if p.piloter.Name() == PILOT_FLUENTD {
-		clean := func() {
-			log.Infof("Try removing log config %s", id)
-			if err := os.Remove(p.piloter.GetConfPath(id)); err != nil {
-				log.Warnf("removing %s log config failure", id)
-				return
-			}
-			p.tryReload()
-		}
-		time.AfterFunc(15*time.Minute, clean)
-		return nil
-	}
+	//if p.piloter.Name() == PILOT_FLUENTD {
+	//	clean := func() {
+	//		log.Infof("Try removing log config %s", id)
+	//		if err := os.Remove(p.piloter.GetConfPath(id)); err != nil {
+	//			log.Warnf("removing %s log config failure", id)
+	//			return
+	//		}
+	//		p.tryReload()
+	//	}
+	//	time.AfterFunc(15*time.Minute, clean)
+	//	return nil
+	//}
 
 	return p.piloter.OnDestroyEvent(id)
 }
@@ -518,31 +518,31 @@ func (p *Pilot) parseTags(tags string) (map[string]string, error) {
 	return tagMap, nil
 }
 
-func (p *Pilot) tryCheckKafkaTopic(topic string) error {
-	output := os.Getenv(ENV_LOGGING_OUTPUT)
-	if output != "kafka" {
-		return nil
-	}
-
-	topicPath := filepath.Join(p.piloter.GetBaseConf(), "config", "kafka_topics")
-	if _, err := os.Stat(topicPath); os.IsNotExist(err) {
-		log.Info("ignore checking the validity of kafka topic")
-		return nil
-	}
-
-	topics, err := ReadFile(topicPath, ",")
-	if err != nil {
-		return err
-	}
-
-	for _, t := range topics {
-		if t == topic {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("invalid topic: %s, supported topics: %v", topic, topics)
-}
+//func (p *Pilot) tryCheckKafkaTopic(topic string) error {
+//	output := os.Getenv(ENV_LOGGING_OUTPUT)
+//	if output != "kafka" {
+//		return nil
+//	}
+//
+//	topicPath := filepath.Join(p.piloter.GetBaseConf(), "config", "kafka_topics")
+//	if _, err := os.Stat(topicPath); os.IsNotExist(err) {
+//		log.Info("ignore checking the validity of kafka topic")
+//		return nil
+//	}
+//
+//	topics, err := ReadFile(topicPath, ",")
+//	if err != nil {
+//		return err
+//	}
+//
+//	for _, t := range topics {
+//		if t == topic {
+//			return nil
+//		}
+//	}
+//
+//	return fmt.Errorf("invalid topic: %s, supported topics: %v", topic, topics)
+//}
 
 func (p *Pilot) parseLogConfig(name string, info *LogInfoNode, jsonLogPath string, mounts map[string]types.MountPoint) (*LogConfig, error) {
 	path := strings.TrimSpace(info.value)
@@ -575,9 +575,9 @@ func (p *Pilot) parseLogConfig(name string, info *LogInfoNode, jsonLogPath strin
 	}
 
 	// try to check the validity of the target topic for kafka
-	if err := p.tryCheckKafkaTopic(tagMap["topic"]); err != nil {
-		return nil, err
-	}
+	//if err := p.tryCheckKafkaTopic(tagMap["topic"]); err != nil {
+	//	return nil, err
+	//}
 
 	format := info.children["format"]
 	if format == nil || format.value == "none" {
@@ -753,7 +753,7 @@ func (p *Pilot) render(containerId string, container map[string]string, configLi
 		log.Infof("logs: %s = %v", containerId, config)
 	}
 
-	output := os.Getenv(ENV_FLUENTD_OUTPUT)
+	var output string
 	if p.piloter.Name() == PILOT_FILEBEAT {
 		output = os.Getenv(ENV_FILEBEAT_OUTPUT)
 	}
@@ -762,13 +762,13 @@ func (p *Pilot) render(containerId string, container map[string]string, configLi
 	}
 
 	var buf bytes.Buffer
-	context := map[string]interface{}{
+	ctx := map[string]interface{}{
 		"containerId": containerId,
 		"configList":  configList,
 		"container":   container,
 		"output":      output,
 	}
-	if err := p.templ.Execute(&buf, context); err != nil {
+	if err := p.templ.Execute(&buf, ctx); err != nil {
 		return "", err
 	}
 	return buf.String(), nil

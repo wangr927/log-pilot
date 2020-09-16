@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pilot-cm
+data:
+  LOGGING_OUTPUT: "elasticsearch"
+  ELASTIC_HOSTS: ""
